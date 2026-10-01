@@ -1,0 +1,6 @@
+{
+  "name": "Aventura do Descritor 09 - Português 2º Ano",
+  "description": "Jogo interativo e pedagógico de Língua Portuguesa para o 2º ano do Ensino Fundamental. Focado no Descritor 09: identificação de sílabas (canônicas e não canônicas) e finalidade de textos de diferentes gêneros.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
