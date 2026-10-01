@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layers, Search, Trophy, Sparkles, BookOpen, Volume2, ArrowRight } from 'lucide-react';
+import { Layers, Search, Trophy, Sparkles, BookOpen, Volume2, ArrowRight, Flame, Award } from 'lucide-react';
 import { GameMode, GameSettings, PlayerStats } from '../types';
 import { speak } from '../utils/audio';
 
@@ -64,6 +64,16 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 <span>Guia BNCC & Matrizes</span>
               </button>
             </div>
+
+            {/* Positive Reinforcement Streak Banner */}
+            {stats.bestStreak >= 3 && (
+              <div className="pt-2">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-black/20 backdrop-blur-md rounded-2xl border border-white/20 text-xs font-bold text-amber-100">
+                  <Flame className="w-4 h-4 text-amber-300 fill-amber-300 animate-bounce" />
+                  <span>Seu recorde: {stats.bestStreak} acertos seguidos! Mantenha esse ritmo!</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Sofia Mascot Illustration in Hero */}

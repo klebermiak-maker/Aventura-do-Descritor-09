@@ -1,5 +1,5 @@
 import React from 'react';
-import { Volume2, VolumeX, Sparkles, BookOpen, Trophy, Award, CaseUpper, CaseLower } from 'lucide-react';
+import { Volume2, VolumeX, Sparkles, BookOpen, Trophy, Award, CaseUpper, CaseLower, Flame } from 'lucide-react';
 import { GameMode, GameSettings, PlayerStats } from '../types';
 
 interface HeaderProps {
@@ -67,6 +67,14 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Zone 3: Interactive Affordances & Controls */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Active Positive Reinforcement Streak Badge */}
+          {stats.streak >= 3 && (
+            <div className="flex items-center gap-1 px-2.5 py-1 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-lg font-black text-xs shadow-xs animate-bounce-gentle">
+              <Flame className="w-3.5 h-3.5 fill-amber-200 text-amber-200" />
+              <span>{stats.streak} Seguidos!</span>
+            </div>
+          )}
+
           {/* Stars Score Pill */}
           <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 rounded-lg border border-amber-300 font-bold text-amber-900 text-xs md:text-sm tabular-nums">
             <Sparkles className="w-4 h-4 text-amber-600 fill-amber-400" />

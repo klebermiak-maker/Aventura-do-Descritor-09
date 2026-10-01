@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { Volume2, Sparkles, CheckCircle2, RefreshCw, HelpCircle, Layers, Train, Search } from 'lucide-react';
+import { Volume2, Sparkles, CheckCircle2, RefreshCw, HelpCircle, Layers, Train, Search, Flame } from 'lucide-react';
 import { SyllableItem, SyllableSubMode, GameSettings, PlayerStats } from '../types';
 import { SYLLABLES_DATA } from '../data/syllablesData';
 import { sounds, speak } from '../utils/audio';
 import { MascotSofia } from './MascotSofia';
+import { PositiveStreakToast, getStreakData } from './PositiveStreakToast';
 
 interface SyllableGameProps {
   settings: GameSettings;
@@ -26,6 +27,7 @@ export const SyllableGame: React.FC<SyllableGameProps> = ({
   const [isCorrect, setIsCorrect] = useState(false);
   const [trainSyllables, setTrainSyllables] = useState<string[]>([]);
   const [showHint, setShowHint] = useState(false);
+  const [streakReward, setStreakReward] = useState<number | null>(null);
   const [mascotMessage, setMascotMessage] = useState<string>(
     'Olá, amiguinho! Vamos descobrir quais sílabas formam esta palavra especial?'
   );
@@ -79,15 +81,33 @@ export const SyllableGame: React.FC<SyllableGameProps> = ({
     setIsCorrect(correct);
 
     if (correct) {
-      if (settings.soundEnabled) sounds.playCorrect();
-      confetti({
-        particleCount: 40,
-        spread: 60,
-        origin: { y: 0.7 }
-      });
-
       const newStreak = stats.streak + 1;
-      const earnedStars = newStreak % 3 === 0 ? 3 : 2;
+      const isStreakBonus = newStreak >= 3;
+      const earnedStars = isStreakBonus ? 4 : 2;
+
+      if (isStreakBonus) {
+        if (settings.soundEnabled) sounds.playStreakReward(newStreak);
+        setStreakReward(newStreak);
+        confetti({
+          particleCount: 75,
+          spread: 85,
+          origin: { y: 0.55 },
+          colors: ['#f59e0b', '#f97316', '#38bdf8', '#10b981'],
+        });
+        const streakData = getStreakData(newStreak);
+        setMascotMessage(`🔥 ${newStreak} ACERTOS SEGUIDOS! ${streakData.tip}`);
+      } else {
+        if (settings.soundEnabled) sounds.playCorrect();
+        confetti({
+          particleCount: 40,
+          spread: 60,
+          origin: { y: 0.7 }
+        });
+        setMascotMessage(`Sensacional! Você acertou! A sílaba é ${option}. A palavra completa é ${currentItem.word}!`);
+        if (settings.speechEnabled) {
+          speak(`Muito bem! A sílaba correta é ${option}. ${currentItem.word}!`, true);
+        }
+      }
 
       onUpdateStats({
         syllableAnswers: stats.syllableAnswers + 1,
@@ -96,13 +116,9 @@ export const SyllableGame: React.FC<SyllableGameProps> = ({
         streak: newStreak,
         bestStreak: Math.max(stats.bestStreak, newStreak),
       });
-
-      setMascotMessage(`Sensacional! Você acertou! A sílaba é ${option}. A palavra completa é ${currentItem.word}!`);
-      if (settings.speechEnabled) {
-        speak(`Muito bem! A sílaba correta é ${option}. ${currentItem.word}!`, true);
-      }
     } else {
       if (settings.soundEnabled) sounds.playError();
+      setStreakReward(null);
       onUpdateStats({
         syllableAnswers: stats.syllableAnswers + 1,
         streak: 0,
@@ -142,18 +158,39 @@ export const SyllableGame: React.FC<SyllableGameProps> = ({
       setIsCorrect(isWordCorrect);
 
       if (isWordCorrect) {
-        if (settings.soundEnabled) sounds.playCorrect();
-        confetti({ particleCount: 50, spread: 70 });
+        const newStreak = stats.streak + 1;
+        const isStreakBonus = newStreak >= 3;
+
+        if (isStreakBonus) {
+          if (settings.soundEnabled) sounds.playStreakReward(newStreak);
+          setStreakReward(newStreak);
+          confetti({
+            particleCount: 80,
+            spread: 90,
+            origin: { y: 0.55 },
+            colors: ['#f59e0b', '#f97316', '#38bdf8', '#10b981'],
+          });
+        } else {
+          if (settings.soundEnabled) sounds.playCorrect();
+          confetti({ particleCount: 50, spread: 70 });
+        }
+
         onUpdateStats({
           syllableAnswers: stats.syllableAnswers + 1,
           syllableCorrect: stats.syllableCorrect + 1,
-          starsTotal: stats.starsTotal + 3,
-          streak: stats.streak + 1,
+          starsTotal: stats.starsTotal + (isStreakBonus ? 5 : 3),
+          streak: newStreak,
+          bestStreak: Math.max(stats.bestStreak, newStreak),
         });
+
         setMascotMessage(`Incrível! O trem formou a palavra correta: ${currentItem.word}!`);
-        speak(`Parabéns! Você montou a palavra ${currentItem.word}!`, settings.speechEnabled);
+        if (!isStreakBonus) {
+          speak(`Parabéns! Você montou a palavra ${currentItem.word}!`, settings.speechEnabled);
+        }
       } else {
         if (settings.soundEnabled) sounds.playError();
+        setStreakReward(null);
+        onUpdateStats({ streak: 0 });
         setMascotMessage(`Ops! O trenzinho ficou com as sílabas trocadas. Clique em recomeçar para tentar de novo!`);
       }
     }
@@ -178,6 +215,15 @@ export const SyllableGame: React.FC<SyllableGameProps> = ({
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-4 space-y-4">
+      {/* Positive Reinforcement Toast Popup */}
+      {streakReward !== null && (
+        <PositiveStreakToast
+          streak={streakReward}
+          speechEnabled={settings.speechEnabled}
+          onClose={() => setStreakReward(null)}
+        />
+      )}
+
       {/* Sub-mode Segmented Control */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-2 bg-white/80 backdrop-blur-sm rounded-xl border border-amber-200 shadow-xs">
         <div className="flex items-center gap-1.5 p-1 bg-amber-50 rounded-lg">
@@ -240,6 +286,12 @@ export const SyllableGame: React.FC<SyllableGameProps> = ({
             <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200">
               Desafio {currentIndex + 1} de {SYLLABLES_DATA.length}
             </span>
+            {stats.streak >= 3 && (
+              <span className="inline-flex items-center gap-1 text-xs font-black text-white bg-gradient-to-r from-orange-500 to-amber-500 px-2.5 py-1 rounded-md shadow-xs animate-bounce-gentle">
+                <Flame className="w-3.5 h-3.5 fill-amber-200" />
+                <span>{stats.streak} Seguidos!</span>
+              </span>
+            )}
             <span className="text-xs font-medium text-slate-500">
               Categoria: {currentItem.category}
             </span>

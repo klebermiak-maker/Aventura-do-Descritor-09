@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { Volume2, Sparkles, CheckCircle2, XCircle, HelpCircle, ArrowRight } from 'lucide-react';
+import { Volume2, Sparkles, CheckCircle2, XCircle, HelpCircle, ArrowRight, Flame } from 'lucide-react';
 import { TextQuestion, GameSettings, PlayerStats } from '../types';
 import { TEXTS_DATA } from '../data/textsData';
 import { sounds, speak, stopSpeech } from '../utils/audio';
 import { MascotSofia } from './MascotSofia';
+import { PositiveStreakToast, getStreakData } from './PositiveStreakToast';
 
 interface TextDetectiveGameProps {
   settings: GameSettings;
@@ -24,6 +25,7 @@ export const TextDetectiveGame: React.FC<TextDetectiveGameProps> = ({
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
+  const [streakReward, setStreakReward] = useState<number | null>(null);
   const [mascotMessage, setMascotMessage] = useState<string>(
     'Olá, Detetive das Palavras! Leia o texto com calma e descubra para que ele serve!'
   );
@@ -69,15 +71,33 @@ export const TextDetectiveGame: React.FC<TextDetectiveGameProps> = ({
     setShowExplanation(true);
 
     if (correct) {
-      if (settings.soundEnabled) sounds.playCorrect();
-      confetti({
-        particleCount: 50,
-        spread: 70,
-        origin: { y: 0.6 }
-      });
-
       const newStreak = stats.streak + 1;
-      const earnedStars = newStreak >= 3 ? 4 : 3;
+      const isStreakBonus = newStreak >= 3;
+      const earnedStars = isStreakBonus ? 5 : 3;
+
+      if (isStreakBonus) {
+        if (settings.soundEnabled) sounds.playStreakReward(newStreak);
+        setStreakReward(newStreak);
+        confetti({
+          particleCount: 75,
+          spread: 85,
+          origin: { y: 0.55 },
+          colors: ['#0284c7', '#38bdf8', '#f59e0b', '#10b981'],
+        });
+        const streakData = getStreakData(newStreak);
+        setMascotMessage(`🔥 ${newStreak} ACERTOS SEGUIDOS! ${streakData.tip}`);
+      } else {
+        if (settings.soundEnabled) sounds.playCorrect();
+        confetti({
+          particleCount: 50,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+        setMascotMessage(`Brilhante dedução, Detetive! Você acertou a finalidade do ${currentText.genreName}!`);
+        if (settings.speechEnabled) {
+          speak(`Excelente! Você descobriu a finalidade deste texto! Parabéns!`, true);
+        }
+      }
 
       onUpdateStats({
         textAnswers: stats.textAnswers + 1,
@@ -86,13 +106,9 @@ export const TextDetectiveGame: React.FC<TextDetectiveGameProps> = ({
         streak: newStreak,
         bestStreak: Math.max(stats.bestStreak, newStreak),
       });
-
-      setMascotMessage(`Brilhante dedução, Detetive! Você acertou a finalidade do ${currentText.genreName}!`);
-      if (settings.speechEnabled) {
-        speak(`Excelente! Você descobriu a finalidade deste texto! Parabéns!`, true);
-      }
     } else {
       if (settings.soundEnabled) sounds.playError();
+      setStreakReward(null);
       onUpdateStats({
         textAnswers: stats.textAnswers + 1,
         streak: 0,
@@ -137,6 +153,15 @@ export const TextDetectiveGame: React.FC<TextDetectiveGameProps> = ({
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-4 space-y-4">
+      {/* Positive Reinforcement Toast Popup */}
+      {streakReward !== null && (
+        <PositiveStreakToast
+          streak={streakReward}
+          speechEnabled={settings.speechEnabled}
+          onClose={() => setStreakReward(null)}
+        />
+      )}
+
       {/* Top Header Information */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white/90 rounded-2xl border border-sky-200 shadow-xs">
         <div className="flex items-center gap-2">
@@ -152,6 +177,12 @@ export const TextDetectiveGame: React.FC<TextDetectiveGameProps> = ({
         </div>
 
         <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+          {stats.streak >= 3 && (
+            <span className="inline-flex items-center gap-1 text-xs font-black text-white bg-gradient-to-r from-orange-500 to-amber-500 px-2.5 py-1 rounded-md shadow-xs animate-bounce-gentle">
+              <Flame className="w-3.5 h-3.5 fill-amber-200" />
+              <span>{stats.streak} Seguidos!</span>
+            </span>
+          )}
           <span>Caso #{currentIndex + 1} de {TEXTS_DATA.length}</span>
         </div>
       </div>

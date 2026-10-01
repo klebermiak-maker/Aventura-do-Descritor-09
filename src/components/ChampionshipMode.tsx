@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
-import { Trophy, Star, Lock, CheckCircle2, Play, Award, RotateCcw } from 'lucide-react';
+import { Trophy, Star, Lock, CheckCircle2, Play, Award, RotateCcw, Flame } from 'lucide-react';
 import { GameSettings, PlayerStats } from '../types';
 import { SYLLABLES_DATA } from '../data/syllablesData';
 import { TEXTS_DATA } from '../data/textsData';
 import { sounds, speak } from '../utils/audio';
+import { PositiveStreakToast } from './PositiveStreakToast';
 
 interface ChampionshipProps {
   settings: GameSettings;
@@ -47,6 +48,7 @@ export const ChampionshipMode: React.FC<ChampionshipProps> = ({
   const [userAnswer, setUserAnswer] = useState<string | null>(null);
   const [levelAnswered, setLevelAnswered] = useState(false);
   const [isLevelCorrect, setIsLevelCorrect] = useState(false);
+  const [streakReward, setStreakReward] = useState<number | null>(null);
 
   const completedSet = new Set(stats.levelsCompleted);
 
@@ -78,21 +80,35 @@ export const ChampionshipMode: React.FC<ChampionshipProps> = ({
     setIsLevelCorrect(isCorrect);
 
     if (isCorrect) {
-      if (settings.soundEnabled) sounds.playFanfare();
-      confetti({ particleCount: 70, spread: 80, origin: { y: 0.6 } });
+      const newStreak = stats.streak + 1;
+      const isStreakBonus = newStreak >= 3;
+
+      if (isStreakBonus) {
+        if (settings.soundEnabled) sounds.playStreakReward(newStreak);
+        setStreakReward(newStreak);
+        confetti({ particleCount: 85, spread: 90, origin: { y: 0.55 }, colors: ['#10b981', '#34d399', '#f59e0b', '#38bdf8'] });
+      } else {
+        if (settings.soundEnabled) sounds.playFanfare();
+        confetti({ particleCount: 70, spread: 80, origin: { y: 0.6 } });
+      }
 
       const newLevels = Array.from(new Set([...stats.levelsCompleted, activeLevel]));
-      const newStars = completedSet.has(activeLevel) ? stats.starsTotal : stats.starsTotal + 3;
+      const earnedStars = completedSet.has(activeLevel) ? 0 : isStreakBonus ? 5 : 3;
 
       onUpdateStats({
         levelsCompleted: newLevels,
-        starsTotal: newStars,
-        streak: stats.streak + 1,
+        starsTotal: stats.starsTotal + earnedStars,
+        streak: newStreak,
+        bestStreak: Math.max(stats.bestStreak, newStreak),
       });
 
-      speak(`Parabéns! Fase ${activeLevel} concluída com sucesso!`, settings.speechEnabled);
+      if (!isStreakBonus) {
+        speak(`Parabéns! Fase ${activeLevel} concluída com sucesso!`, settings.speechEnabled);
+      }
     } else {
       if (settings.soundEnabled) sounds.playError();
+      setStreakReward(null);
+      onUpdateStats({ streak: 0 });
       speak('Não foi dessa vez. Tente novamente!', settings.speechEnabled);
     }
   };
@@ -103,6 +119,15 @@ export const ChampionshipMode: React.FC<ChampionshipProps> = ({
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-4 space-y-6">
+      {/* Positive Reinforcement Toast Popup */}
+      {streakReward !== null && (
+        <PositiveStreakToast
+          streak={streakReward}
+          speechEnabled={settings.speechEnabled}
+          onClose={() => setStreakReward(null)}
+        />
+      )}
+
       {/* Championship Header */}
       <div className="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-3xl p-6 md:p-8 text-white shadow-md relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -120,6 +145,12 @@ export const ChampionshipMode: React.FC<ChampionshipProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
+            {stats.streak >= 3 && (
+              <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-3 py-2 rounded-2xl text-white font-black text-xs flex items-center gap-1.5 shadow-md animate-bounce-gentle">
+                <Flame className="w-4 h-4 fill-amber-200" />
+                <span>{stats.streak} Acertos Seguidos!</span>
+              </div>
+            )}
             <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/20 text-center">
               <span className="text-[11px] uppercase tracking-wider text-emerald-200 block font-bold">
                 Fases Concluídas

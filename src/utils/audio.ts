@@ -148,6 +148,42 @@ class SoundSynthesizer {
       osc.stop(start + d);
     });
   }
+
+  // Celebratory sound for positive reinforcement streaks (3+ consecutive hits)
+  playStreakReward(streak: number = 3) {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+
+    // Pitch scales slightly with streak for excitement
+    const baseFreq = Math.min(600, 440 + (streak - 3) * 30);
+    const notes = [
+      baseFreq,
+      baseFreq * 1.25, // major third
+      baseFreq * 1.5,  // fifth
+      baseFreq * 2.0,  // octave
+      baseFreq * 2.25  // 9th sparkle
+    ];
+
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const startTime = now + i * 0.08;
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startTime);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.05, startTime + 0.2);
+
+      gain.gain.setValueAtTime(0.18, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.35);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(startTime);
+      osc.stop(startTime + 0.38);
+    });
+  }
 }
 
 export const sounds = new SoundSynthesizer();
